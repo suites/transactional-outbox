@@ -1,0 +1,28 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Order {
+  id        Int      @id @default(autoincrement())
+  orderNo   String   @unique
+  orderDate DateTime @default(now())
+  productId String
+  createdAt DateTime @default(now())
+}
+
+model Outbox {
+  id          String   @id @default(uuid())
+  eventType   String
+  payload     Json
+  processedAt DateTime?
+  createdAt   DateTime @default(now())
+}
+
+model Inbox {
+  id          String   @id
+  processedAt DateTime @default(now())
+}
