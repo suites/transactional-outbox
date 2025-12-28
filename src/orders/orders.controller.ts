@@ -1,14 +1,19 @@
 // src/orders/orders.controller.ts
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, Logger } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 
 @Controller('orders')
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
+  private readonly logger = new Logger(OrdersController.name);
 
   @Post()
   async createOrder(@Body() body: { productId: string }) {
-    // 테스트를 위해 상품 ID는 하드코딩하거나 Body로 받습니다.
-    return await this.ordersService.createOrder(body.productId);
+    const result = await this.ordersService.createOrder(body.productId);
+    this.logger.log(
+      `[Order created] id: ${result.id} orderNo: ${result.orderNo} productId: ${result.productId} orderDate: ${result.orderDate}`,
+    );
+
+    return result;
   }
 }

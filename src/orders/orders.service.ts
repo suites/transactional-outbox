@@ -9,7 +9,6 @@ export class OrdersService {
   async createOrder(productId: string) {
     const orderNo = `ORD-${Date.now()}`;
 
-    // 핵심: 원자적 트랜잭션
     return await this.prisma.$transaction(async (tx) => {
       // 1. 주문 저장
       const order = await tx.order.create({
