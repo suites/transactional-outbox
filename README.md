@@ -1,98 +1,119 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+### transactional-outbox
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+NestJS + Prisma + Kafka로 **Transactional Outbox 패턴을 “아주 단순하게” 구현**해 본 예제 프로젝트입니다.  
+블로그 글에서 설명한 흐름을 그대로 따라가며, 최소한의 코드로 다음을 확인할 수 있습니다.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+- **Write path**: 주문(Order) 저장과 Outbox 이벤트 적재를 **단일 DB 트랜잭션**으로 처리
+- **Relay**: Outbox 테이블을 폴링하여 Kafka로 이벤트 발행 후 `processedAt` 마킹
+- **Read path**: Consumer에서 Inbox 테이블로 **멱등성(Idempotency)** 확보
 
-## Description
+블로그 글 링크: https://fredly.dev/transactional-outbox
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+---
 
-## Project setup
+### 아키텍처 한눈에 보기
 
-```bash
-$ pnpm install
-```
+1. `POST /orders` 요청 수신
+2. DB 트랜잭션으로 `Order` 저장 + `Outbox` 저장
+3. `OutboxProcessor`가 미처리 Outbox를 조회해 Kafka 토픽(`order.created`)으로 발행
+4. `OrdersConsumer`가 메시지를 수신하고 `Inbox`에 먼저 기록해 중복 처리 방지
 
-## Compile and run the project
+---
+
+### 준비물
+
+- Node.js / pnpm
+- Docker (PostgreSQL, Kafka 실행용)
+
+---
+
+### 빠른 시작(로컬)
+
+1. 의존성 설치
 
 ```bash
-# development
-$ pnpm run start
-
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
+pnpm install
 ```
 
-## Run tests
+2. 인프라(Postgres, Kafka) 실행
 
 ```bash
-# unit tests
-$ pnpm run test
-
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+docker compose up -d
 ```
 
-## Deployment
+3. 환경변수 설정
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+루트에 `.env`를 만들고 아래 값을 채웁니다.
 
 ```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+DATABASE_URL="postgresql://user:password@localhost:5432/order_db?schema=public"
+KAFKA_BROKERS="localhost:9092"
+KAFKA_GROUP_ID="order-group"
+PORT=3000
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+4. DB 마이그레이션/클라이언트 생성
 
-## Resources
+```bash
+pnpm db:migrate
+pnpm db:generate
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+5. 애플리케이션 실행(HTTP + Kafka Consumer 함께)
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+```bash
+pnpm start:dev
+```
 
-## Support
+---
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+### 동작 확인
 
-## Stay in touch
+주문 생성:
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+```bash
+curl -X POST "http://localhost:3000/orders" \
+  -H "Content-Type: application/json" \
+  -d '{"productId":"P-001"}'
+```
 
-## License
+기대하는 흐름:
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+- DB에 `Order`와 `Outbox`가 함께 저장됨
+- 몇 초 내 `OutboxProcessor`가 `order.created` 이벤트를 발행하고 `processedAt`을 갱신함
+- `OrdersConsumer`가 메시지를 수신하고 `Inbox`에 기록(중복이면 경고 로그 후 종료)
+
+---
+
+### 주요 토픽/이벤트
+
+- Kafka topic: `order.created`
+- Payload 타입(공용): `src/orders/events/order-created.event.ts`
+
+---
+
+### 프로젝트 구조
+
+- `src/orders/orders.service.ts`
+  - 주문 저장 + Outbox 적재를 **DB 트랜잭션으로 묶는** 핵심 코드
+- `src/orders/outbox.processor.ts`
+  - 미처리 Outbox 조회 → Kafka 발행 → `processedAt` 업데이트
+- `src/orders/orders.consumer.ts`
+  - `order.created` 수신 → Inbox 기록으로 멱등 처리
+- `schema.prisma`
+  - `Order`, `Outbox`, `Inbox` 모델 정의
+
+---
+
+### 주의/한계(의도된 단순화)
+
+이 프로젝트는 “패턴을 이해하기 위한 최소 구현”이라 아래는 단순화되어 있습니다.
+
+- Outbox 폴링은 크론 기반이며, 경쟁 조건/락 전략은 생략되어 있음
+- 재시도, DLQ(Dead Letter Queue), 스키마 버저닝, payload 런타임 검증 등은 미포함
+
+---
+
+### 라이선스
+
+MIT
