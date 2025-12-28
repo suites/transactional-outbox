@@ -1,4 +1,4 @@
-### transactional-outbox
+# transactional-outbox
 
 NestJS + Prisma + Kafka로 **Transactional Outbox 패턴을 “아주 단순하게” 구현**해 본 예제 프로젝트입니다.  
 블로그 글에서 설명한 흐름을 그대로 따라가며, 최소한의 코드로 다음을 확인할 수 있습니다.
@@ -11,7 +11,7 @@ NestJS + Prisma + Kafka로 **Transactional Outbox 패턴을 “아주 단순하�
 
 ---
 
-### 아키텍처 한눈에 보기
+## 아키텍처 한눈에 보기
 
 1. `POST /orders` 요청 수신
 2. DB 트랜잭션으로 `Order` 저장 + `Outbox` 저장
@@ -20,14 +20,14 @@ NestJS + Prisma + Kafka로 **Transactional Outbox 패턴을 “아주 단순하�
 
 ---
 
-### 준비물
+## 준비물
 
 - Node.js / pnpm
 - Docker (PostgreSQL, Kafka 실행용)
 
 ---
 
-### 빠른 시작(로컬)
+## 빠른 시작(로컬)
 
 1. 의존성 설치
 
@@ -67,7 +67,7 @@ pnpm start:dev
 
 ---
 
-### 동작 확인
+## 동작 확인
 
 주문 생성:
 
@@ -85,14 +85,14 @@ curl -X POST "http://localhost:3000/orders" \
 
 ---
 
-### 주요 토픽/이벤트
+## 주요 토픽/이벤트
 
 - Kafka topic: `order.created`
 - Payload 타입(공용): `src/orders/events/order-created.event.ts`
 
 ---
 
-### 프로젝트 구조
+## 프로젝트 구조
 
 - `src/orders/orders.service.ts`
   - 주문 저장 + Outbox 적재를 **DB 트랜잭션으로 묶는** 핵심 코드
@@ -105,7 +105,7 @@ curl -X POST "http://localhost:3000/orders" \
 
 ---
 
-### 주의/한계(의도된 단순화)
+## 주의/한계(의도된 단순화)
 
 이 프로젝트는 “패턴을 이해하기 위한 최소 구현”이라 아래는 단순화되어 있습니다.
 
@@ -114,6 +114,6 @@ curl -X POST "http://localhost:3000/orders" \
 
 ---
 
-### 라이선스
+## 라이선스
 
 MIT
