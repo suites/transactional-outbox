@@ -2,16 +2,16 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 // outbox.processor.ts
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { PrismaService } from './prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { ClientKafka } from '@nestjs/microservices';
 
 @Injectable()
 export class OutboxProcessor {
   constructor(
     private prisma: PrismaService,
-    private kafkaClient: ClientKafka,
+    @Inject('KAFKA_SERVICE') private kafkaClient: ClientKafka,
   ) {}
 
   @Cron(CronExpression.EVERY_5_SECONDS)
